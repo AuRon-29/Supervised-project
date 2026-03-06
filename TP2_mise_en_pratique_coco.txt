@@ -1,0 +1,74 @@
+TP2
+
+ssh -X fmt023@genobioinfo.toulouse.inrae.fr
+Identifiant : fmt023
+mdp : 7e-Aotj!
+
+cd work
+
+srun --pty bash
+
+module load devel/Miniconda/Miniconda3
+module load bioinfo/OBITools/1.2.11
+
+wget (lien data)
+
+database compliqué car on ne va tout trouver si on sélectionne les proies à mettre dedans.
+
+unzip wolf_tutorial.zip
+
+rm wolf_tutorial.zip
+
+mkdir wolf_tutorial/data wolf_tutorial/results
+
+cd wolf_tutorial/
+mv *.fast? *.txt embl_r117.?dx data/
+
+less data/wolf_F.fastq
+
+illuminapairedend --score-min=40 -r wolf_R.fastq wolf_F.fastq > wolf.fastq
+
+obigrep -p 'mode!="joined"' wolf.fastq > wolf.ali.fastq
+
+obihead --without-progress-bar -n 1 wolf.ali.fastq
+
+grep -c 'joined' wolf.fastq # c'est ce qu'on veut pas garder, c'est ce qui sont joint mais qui ne sont pas complétement aligné.
+
+obihead --without-progress-bar wolf.ali.fastq
+obihead --without-progress-bar -n 1 wolf.ali.fastq
+
+ngsfilter -t data/wolf_diet_ngsfilter.txt -u results/wolf.ali.unidentified.fastq results/wolf.ali.fastq > results/wolf.ali.assigned.fastq
+
+
+obihead -n 1 results/wolf.ali.assigned.fastq
+
+
+obiuniq -m sample results/wolf.ali.assigned.fastq > results/wolf.ali.assigned.uniq.fasta
+
+grep '>' wolf.ali.assigned.uniq.fasta | wc -l
+
+Si count = 1 c'est pas très intéressant car ça veut dire qu'on ne l'a trouvé qu'une seul fois.
+
+obiannotate -k count -k merged_sample \
+  wolf.ali.assigned.uniq.fasta > $$ ; mv $$ wolf.ali.assigned.uniq.fasta
+
+obistat -c count wolf.ali.assigned.uniq.fasta |  \
+  sort -nk1 | head -20
+
+grep '>' wolf.ali.assigned.uniq.c10.l80.fasta | wc -l # 169
+
+
+obiclean -s merged_sample -r 0.05 -H \
+  wolf.ali.assigned.uniq.c10.l80.fasta > wolf.ali.assigned.uniq.c10.l80.clean.fasta
+
+On considère les variants comme ceux qui ont un seuil de mutation inférieur 5%
+
+grep '>' wolf.ali.assigned.uniq.c10.l80.clean.fasta | wc -l
+
+il ne reste plus que 26 séquences
+
+ecotag -d embl_r117 -R db_v05_r117.fasta /home/fmt023/work/wolf_tutorial/results/wolf.ali.assigned.uniq.c10.l80.clean.fasta >   wolf.ali.assigned.uniq.c10.l80.clean.tag.fasta
+
+
+
+
